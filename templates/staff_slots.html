@@ -1,0 +1,40 @@
+{% extends "app_layout.html" %}
+{% block title %}{{ title }} · FitnessIT{% endblock %}
+{% block content %}
+<h2>{{ title }}</h2>
+{% if admin %}
+<form class="filters" method="post" action="{{ url_for('staff.create_slot') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label>Тип
+    <select name="class_type_id">{% for t in types %}<option value="{{ t['id'] }}">{{ t['name'] }} ({{ t['duration_min'] }} мин)</option>{% endfor %}</select></label>
+  <label>Тренер
+    <select name="trainer_id">{% for t in trainers %}<option value="{{ t['id'] }}">{{ t['name'] }}</option>{% endfor %}</select></label>
+  <label>Зал
+    <select name="hall_id">{% for h in halls %}<option value="{{ h['id'] }}">{{ h['name'] }}</option>{% endfor %}</select></label>
+  <label>Дата <input type="date" name="date" required></label>
+  <label>Время <input type="time" name="time" required></label>
+  <label>Мест <input type="number" name="capacity" min="1" max="200" placeholder="по умолчанию"></label>
+  <button type="submit">Создать занятие</button>
+</form>
+{% endif %}
+<div class="slots">
+{% for s in slots %}
+  <div class="slot stacked {{ 'cancelled' if s.status == 'cancelled' }}" style="--h: {{ s.class_name|chue }}">
+    <div class="row">
+      <i class="emoji">{{ s.class_name|cicon }}</i>
+      <div class="time">{{ s.starts_at }}</div>
+      <div class="info"><b>{{ s.class_name }}</b><small>{{ s.trainer_name }}{% if s.hall_name %} · {{ s.hall_name }}{% endif %}</small></div>
+      <div class="seats">{{ s.people|length }} / {{ s.capacity }}{{ ' · отменено' if s.status == 'cancelled' }}</div>
+      {% if admin and s.status == 'active' %}
+      <form method="post" action="{{ url_for('staff.cancel_slot', slot_id=s.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="ghost" type="submit">Отменить занятие</button></form>
+      {% endif %}
+    </div>
+    {% if s.people %}<div class="people">{% for p in s.people %}<span>{{ p['name'] }} · {{ p['email'] }}</span>{% endfor %}</div>{% endif %}
+  </div>
+{% else %}
+  <p class="sub">Занятий нет.</p>
+{% endfor %}
+</div>
+{% endblock %}

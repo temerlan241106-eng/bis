@@ -1,0 +1,20 @@
+{% extends "app_layout.html" %}
+{% block title %}Мои записи · FitnessIT{% endblock %}
+{% block content %}
+<h2>Мои записи</h2>
+<div class="slots">
+{% for r in rows %}
+  <div class="slot" style="--h: {{ r['class_name']|chue }}">
+    <i class="emoji">{{ r['class_name']|cicon }}</i>
+    <div class="time">{{ r['starts_at'] }}</div>
+    <div class="info"><b>{{ r['class_name'] }}</b><small>{{ r['trainer_name'] }}{% if r['hall_name'] %} · {{ r['hall_name'] }}{% endif %}</small></div>
+    <div class="seats">до {{ r['ends_at'][11:] }}</div>
+    <form method="post" action="{{ url_for('schedule.cancel', slot_id=r['id']) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="ghost" type="submit">Отменить</button></form>
+  </div>
+{% else %}
+  <p class="sub">Записей пока нет. <a href="{{ url_for('home') }}">Выбрать занятие</a></p>
+{% endfor %}
+</div>
+{% endblock %}

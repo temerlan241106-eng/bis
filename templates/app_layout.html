@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block body %}
+<header class="topbar">
+  <a class="brand" href="{{ url_for('home') }}">
+    <img class="logo" src="{{ url_for('static', filename='logo.svg') }}" alt="" width="30" height="30">
+    <b>FitnessIT</b>
+  </a>
+  <nav>
+    <a href="{{ url_for('home') }}">Расписание</a>
+    {% if g.user['role'] == 'client' %}<a href="{{ url_for('schedule.my') }}">Мои записи</a>{% endif %}
+    {% if g.user['role'] == 'trainer' %}<a href="{{ url_for('staff.trainer') }}">Мои занятия</a>{% endif %}
+    <a href="{{ url_for('profile.profile') }}">Профиль</a>
+    {% if g.user['role'] == 'admin' %}<a href="{{ url_for('staff.admin') }}">Админ</a>{% endif %}
+  </nav>
+  <form class="logout" method="post" action="{{ url_for('auth.logout') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <a class="me" href="{{ url_for('profile.profile') }}"><i class="avatar">{{ g.user['name'][:1]|upper }}</i><span>{{ g.user['name'] }}</span></a>
+    <button type="submit" class="ghost">Выйти</button>
+  </form>
+</header>
+<main class="page">
+  {% include "_flash.html" %}
+  {% block content %}{% endblock %}
+</main>
+{% endblock %}

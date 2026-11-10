@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Ошибка {{ code }}{% endblock %}
+{% block body %}
+<main class="home">
+  <div class="card">
+    <h2>{{ code }}</h2>
+    <p class="sub">{{ text }}</p>
+    <p class="alt"><a href="{{ url_for('home') }}">На главную</a></p>
+  </div>
+</main>
+{% endblock %}

@@ -1,0 +1,118 @@
+{% extends "app_layout.html" %}
+{% block title %}Профиль · FitnessIT{% endblock %}
+{% block content %}
+{% set role_ru = {'client': 'Атлет', 'trainer': 'Тренер', 'admin': 'Админ'}[g.user['role']] %}
+<section class="pf-hero">
+  <i class="pf-avatar">{{ g.user['name'][:1]|upper }}</i>
+  <div class="pf-id">
+    <span class="pf-role">{{ role_ru }}</span>
+    <h2>{{ g.user['name'] }}</h2>
+    <small>{{ g.user['email'] }} · с нами {{ since.strftime('%d.%m.%Y') }}{% if days_with_us > 0 %} ({{ days_with_us }} дн.){% endif %}</small>
+  </div>
+  {% if s %}
+  <div class="pf-level">
+    <div class="lv-top"><b>Ур. {{ s.level.n }}</b><span>{{ s.level.name }}</span></div>
+    <div class="meter"><i style="width: {{ s.level.pct }}%"></i></div>
+    <small>{% if s.level.next_name %}Ещё {{ s.level.left }} зан. до «{{ s.level.next_name }}»{% else %}Максимальный уровень 🎉{% endif %}</small>
+  </div>
+  {% endif %}
+</section>
+
+{% if s %}
+<div class="stat-grid">
+  <div class="stat"><b>{{ s.count }}</b><span>занятий посещено</span></div>
+  <div class="stat"><b>{{ s.hours }}</b><span>часов в зале</span></div>
+  <div class="stat hot"><b>{{ s.streak }}{% if s.streak %}<em>🔥</em>{% endif %}</b><span>нед. подряд</span></div>
+  <div class="stat"><b>{{ s.upcoming }}</b><span>впереди в планах</span></div>
+</div>
+
+{% if s.next %}
+<div class="next-up">
+  <span class="chip">Следующее занятие</span>
+  <div class="nu-main">
+    <i class="emoji">{{ s.next['class_name']|cicon }}</i>
+    <div><b>{{ s.next['class_name'] }}</b>
+    <small>{{ s.next['starts_at'] }} · {{ s.next['trainer_name'] }}{% if s.next['hall_name'] %} · {{ s.next['hall_name'] }}{% endif %}</small></div>
+  </div>
+</div>
+{% endif %}
+
+<div class="pf-cols">
+  <section class="box">
+    <h3>Активность · 8 недель</h3>
+    <div class="bars">
+      {% for b in s.bars %}
+      <div class="bar {{ 'now' if b.now }}" title="{{ b.n }} зан.">
+        <span class="val">{{ b.n if b.n else '' }}</span>
+        <i style="height: {{ [b.h, 4]|max }}%"></i>
+        <small>{{ b.label }}</small>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="box">
+    <h3>Твой стиль</h3>
+    {% if s.count %}
+    <ul class="facts">
+      {% if s.fav_class %}<li><i>{{ s.fav_class.name|cicon }}</i><div><small>Любимое занятие</small><b>{{ s.fav_class.name }}</b> <em>×{{ s.fav_class.n }}</em></div></li>{% endif %}
+      {% if s.fav_trainer %}<li><i>🧑‍🏫</i><div><small>Любимый тренер</small><b>{{ s.fav_trainer.name }}</b> <em>×{{ s.fav_trainer.n }}</em></div></li>{% endif %}
+      {% if s.fav_hall %}<li><i>📍</i><div><small>Домашний зал</small><b>{{ s.fav_hall.name }}</b></div></li>{% endif %}
+      {% if s.daypart %}<li><i>{{ s.daypart.icon }}</i><div><small>Тип атлета</small><b>{{ s.daypart.name }}</b> <em>{{ s.daypart.text }}</em></div></li>{% endif %}
+      {% if s.fav_wd %}<li><i>📅</i><div><small>Чаще всего приходишь по</small><b>{{ s.fav_wd }}</b></div></li>{% endif %}
+    </ul>
+    {% else %}
+    <p class="sub">Сходи на первое занятие — и здесь появится твой портрет атлета.</p>
+    <a class="btn" href="{{ url_for('home') }}">Выбрать занятие</a>
+    {% endif %}
+  </section>
+</div>
+
+<section class="box">
+  <h3>Достижения <span class="count">{{ s.ach_got }} / {{ s.ach|length }}</span></h3>
+  <div class="ach-grid">
+    {% for a in s.ach %}
+    <div class="ach {{ 'got' if a.got else 'locked' }}">
+      <i>{{ a.icon }}</i><b>{{ a.title }}</b><small>{{ a.text }}</small>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+{% if s.recent %}
+<section class="box">
+  <h3>Последние тренировки</h3>
+  <ul class="recent">
+    {% for r in s.recent %}
+    <li><i>{{ r['class_name']|cicon }}</i><b>{{ r['class_name'] }}</b><small>{{ r['starts_at'] }} · {{ r['trainer_name'] }}</small></li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+{% elif t %}
+<div class="stat-grid">
+  <div class="stat"><b>{{ t.slots }}</b><span>занятий в расписании</span></div>
+  <div class="stat"><b>{{ t.people }}</b><span>человек уже занималось</span></div>
+  <div class="stat hot"><b>{{ t.fill }}%</b><span>средняя заполняемость</span></div>
+  <div class="stat"><b>{{ t.upcoming }}</b><span>впереди</span></div>
+</div>
+<section class="box">
+  <h3>Твоя специализация</h3>
+  {% if t.fav_class %}<ul class="facts"><li><i>{{ t.fav_class.name|cicon }}</i><div><small>Чаще всего ведёшь</small><b>{{ t.fav_class.name }}</b> <em>×{{ t.fav_class.n }}</em></div></li></ul>
+  {% else %}<p class="sub">Пока нет занятий в расписании.</p>{% endif %}
+  <a class="btn" href="{{ url_for('staff.trainer') }}">Мои занятия</a>
+</section>
+
+{% else %}
+<div class="stat-grid">
+  <div class="stat"><b>{{ a.clients }}</b><span>клиентов</span></div>
+  <div class="stat"><b>{{ a.trainers }}</b><span>тренеров</span></div>
+  <div class="stat"><b>{{ a.slots }}</b><span>активных занятий</span></div>
+  <div class="stat hot"><b>{{ a.bookings }}</b><span>активных записей</span></div>
+</div>
+<section class="box"><h3>Пульс зала</h3>
+  <p class="sub">Управление расписанием — в панели администратора.</p>
+  <a class="btn" href="{{ url_for('staff.admin') }}">Открыть панель</a></section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,65 @@
+{% extends "app_layout.html" %}
+{% block title %}Расписание · FitnessIT{% endblock %}
+{% block content %}
+<h2>Расписание</h2>
+<form class="filters" method="get" action="{{ url_for('home') }}">
+  <label>Тип
+    <select name="type"><option value="">Все</option>
+      {% for t in types %}<option value="{{ t['id'] }}" {{ 'selected' if f.type == t['id'] }}>{{ t['name'] }}</option>{% endfor %}
+    </select></label>
+  <label>Тренер
+    <select name="trainer"><option value="">Все</option>
+      {% for t in trainers %}<option value="{{ t['id'] }}" {{ 'selected' if f.trainer == t['id'] }}>{{ t['name'] }}</option>{% endfor %}
+    </select></label>
+  <label>Зал
+    <select name="hall"><option value="">Все</option>
+      {% for h in halls %}<option value="{{ h['id'] }}" {{ 'selected' if f.hall == h['id'] }}>{{ h['name'] }}</option>{% endfor %}
+    </select></label>
+  <input type="hidden" name="day" value="{{ f.day }}">
+  <label class="check"><input type="checkbox" name="free" value="1" {{ 'checked' if f.free }}> Только со свободными местами</label>
+  <button type="submit">Показать</button>
+  <a class="reset" href="{{ url_for('home', day=f.day) }}">Сбросить</a>
+</form>
+
+<nav class="daytabs" aria-label="Дни недели">
+  {% for tab in tabs %}
+    <a class="daytab {{ 'active' if tab.active }}" href="{{ tab.url }}" {{ 'aria-current=date' if tab.active }}>
+      <span class="wd">{{ tab.weekday }}</span>
+      <span class="num">{{ tab.num }}</span>
+      {% if tab.today %}<span class="tag">сегодня</span>{% endif %}
+    </a>
+  {% endfor %}
+</nav>
+
+<h3 class="day">{{ day_label }}</h3>
+<div class="slots">
+{% for s in slots %}
+  {% set free = s.capacity - s.taken %}
+  <div class="slot {{ 'past' if s.past }}" style="--h: {{ s.class_name|chue }}">
+    <i class="emoji">{{ s.class_name|cicon }}</i>
+    <div class="time">{{ s.starts_at[11:] }}–{{ s.ends_at[11:] }}</div>
+    <div class="info"><b>{{ s.class_name }}</b><small>{{ s.trainer_name }}{% if s.hall_name %} · {{ s.hall_name }}{% endif %} · {{ s.description }}</small></div>
+    {% if s.past %}
+      <div class="seats muted">Занятие прошло</div>
+    {% else %}
+      <div class="seats {{ 'full' if free <= 0 }}">{{ 'Мест нет' if free <= 0 else 'Свободно: ' ~ free ~ ' из ' ~ s.capacity }}</div>
+    {% endif %}
+    {% if g.user['role'] == 'client' %}
+      {% if s.past %}
+        <button disabled>{{ 'Вы были записаны' if s.mine else 'Запись закрыта' }}</button>
+      {% elif s.mine %}
+        <form method="post" action="{{ url_for('schedule.cancel', slot_id=s.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="ghost" type="submit">Отменить запись</button></form>
+      {% elif free > 0 %}
+        <form method="post" action="{{ url_for('schedule.book', slot_id=s.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit">Записаться</button></form>
+      {% else %}<button disabled>Занято</button>{% endif %}
+    {% endif %}
+  </div>
+{% else %}
+  <p class="sub">В этот день занятий по выбранным условиям нет.</p>
+{% endfor %}
+</div>
+{% endblock %}

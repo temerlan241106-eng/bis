@@ -1,0 +1,39 @@
+__pycache__/
+*.pyc
+instance/
+.env
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Environment
+.env
+
+# Local database
+instance/
+*.db
+
+# IDE
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Environment
+.env
+
+# Local database
+instance/
+*.db
+
+# IDE
+.vscode/
+.idea/
