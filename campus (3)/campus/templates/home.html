@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}FitnessIT{% endblock %}
+{% block body %}
+<main class="home">
+  <div class="card">
+    <h2>Привет, {{ g.user['name'] }}! 👋</h2>
+    <p class="sub">Вы вошли как {{ g.user['email'] }}. Расписание занятий скоро появится здесь. 💪</p>
+    <form method="post" action="{{ url_for('auth.logout') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit">Выйти</button>
+    </form>
+  </div>
+</main>
+{% endblock %}
