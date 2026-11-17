@@ -365,3 +365,53 @@ def test_profile_counts_attended_classes(app):
         s = userpage.client_stats(conn, uid)
         assert s["count"] == 1 and s["minutes"] == 60 and s["streak"] == 1
         assert s["level"]["n"] == 1 and s["ach_got"] >= 1
+
+
+def _make_attended(app, email, n, hour=8):
+    """Делает n прошедших занятий для пользователя (для проверки XP и рейтинга)."""
+    from datetime import datetime, timedelta
+    with app.app_context():
+        conn = get_db()
+        uid = conn.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone()[0]
+        ids = [r[0] for r in conn.execute("SELECT id FROM slots ORDER BY id LIMIT ?", (n,))]
+        for i, sid in enumerate(ids):
+            start = (datetime.now() - timedelta(days=i + 1)).replace(hour=hour, minute=0)
+            conn.execute("UPDATE slots SET starts_at=?, ends_at=? WHERE id=?",
+                         (start.strftime("%Y-%m-%d %H:%M"),
+                          (start + timedelta(minutes=60)).strftime("%Y-%m-%d %H:%M"), sid))
+            conn.execute("INSERT INTO bookings (user_id, slot_id) VALUES (?, ?)", (uid, sid))
+        return uid
+
+
+def test_xp_and_quests(app):
+    import userpage
+    uid = _make_attended(app, "client@kbtu.kz", 3)
+    with app.app_context():
+        s = userpage.client_stats(get_db(), uid)
+        assert s["xp"] >= 10 * 3          # минимум по 10 XP за занятие
+        assert len(s["quests"]) == 3 and len(s["ach"]) == 12
+
+
+def test_xp_never_decreases_when_streak_breaks(app):
+    import userpage
+    from datetime import datetime, timedelta
+    uid = _make_attended(app, "client@kbtu.kz", 3)
+    with app.app_context():
+        conn = get_db()
+        before = userpage.client_stats(conn, uid)["xp"]
+        later = datetime.now() + timedelta(days=60)   # серия «сгорела», но XP остаётся
+        assert userpage.client_stats(conn, uid, now=later)["xp"] >= before
+
+
+def test_leaderboard_page_and_order(app, as_client):
+    import userpage
+    _make_attended(app, "client@kbtu.kz", 4)
+    r = as_client.get("/leaderboard")
+    assert r.status_code == 200 and "Клиент Данияр" in r.get_data(as_text=True)
+    with app.app_context():
+        board = userpage.leaderboard(get_db())["xp"]
+        assert board[0]["name"] == "Клиент Данияр" and board[0]["rank"] == 1
+
+
+def test_leaderboard_requires_login(client):
+    assert client.get("/leaderboard").status_code == 302

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 220" preserveAspectRatio="xMidYMax slice">
+  <path d="M0 220V150l60-32 50 24 70-62 55 40 60-78 70 70 52-34 68 66 60-52 65 60 90-44 100 56V220z" fill="#1d4ed8" fill-opacity=".16"/>
+  <path d="M0 220V172l70-36 48 30 80-70 50 44 70-58 62 62 70-44 74 58 66-40 62 48 88-30 60 40V220z" fill="#29b6f6" fill-opacity=".14"/>
+  <path d="M180 96l18 14-12-4-8 9-7-9-11 6zM378 62l16 12-10-3-7 8-8-8-9 5zM300 120l12 10-8-2-6 6-5-6-8 4z" fill="#fff" fill-opacity=".35"/>
+  <path d="M0 220V196l80-26 60 22 90-40 70 34 80-30 60 26 80-24 70 28 80-18 130 26V220z" fill="#050b1c" fill-opacity=".85"/>
+</svg>

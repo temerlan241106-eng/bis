@@ -109,7 +109,7 @@ def render_schedule():
 def book(slot_id):
     try:
         booking.book(get_db(), g.user["id"], slot_id)
-        flash("Вы записаны на занятие.", "success")
+        flash("Вы записаны на занятие. +10 XP после посещения 💪", "success")
     except booking.BookingError as e:
         flash(str(e), "error")
     return redirect(request.referrer or url_for("home"))

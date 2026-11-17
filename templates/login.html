@@ -1,12 +1,12 @@
 {% extends "auth_layout.html" %}
 {% block title %}Вход · FitnessIT{% endblock %}
 {% block card %}
-  <h2>С возвращением в зал</h2>
-  <p class="sub">Войдите, чтобы посмотреть расписание и записаться на занятие.</p>
+  <h2>С возвращением, студент</h2>
+  <p class="sub">Войдите университетской почтой, чтобы посмотреть расписание и записаться на занятие.</p>
   {% include "_flash.html" %}
   <form method="post" novalidate>
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <label for="email">Университетский email</label>
+    <label for="email">Студенческий email (@kbtu.kz)</label>
     <input id="email" name="email" type="email" placeholder="you@kbtu.kz"
            value="{{ email }}" maxlength="120" autocomplete="email" required>
     <label for="password">Пароль</label>

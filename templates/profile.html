@@ -14,6 +14,7 @@
     <div class="lv-top"><b>Ур. {{ s.level.n }}</b><span>{{ s.level.name }}</span></div>
     <div class="meter"><i style="width: {{ s.level.pct }}%"></i></div>
     <small>{% if s.level.next_name %}Ещё {{ s.level.left }} зан. до «{{ s.level.next_name }}»{% else %}Максимальный уровень 🎉{% endif %}</small>
+    <div class="xp-row"><span class="xp">⭐ {{ s.xp }} XP</span>{% if rank %}<a class="rank-chip" href="{{ url_for('profile.leaderboard_page') }}">#{{ rank }} из {{ rank_total }}</a>{% endif %}</div>
   </div>
   {% endif %}
 </section>
@@ -36,6 +37,21 @@
   </div>
 </div>
 {% endif %}
+
+<section class="box quests">
+  <h3>Квесты недели <span class="count">{{ s.quests_done }} / {{ s.quests|length }}{% if s.quests_done == s.quests|length %} · все выполнены 🏆{% endif %}</span></h3>
+  <div class="quest-grid">
+    {% for q in s.quests %}
+    <div class="quest {{ 'done' if q.done }}">
+      <i>{{ q.icon }}</i>
+      <div class="q-body"><b>{{ q.title }}</b><small>{{ q.text }}</small>
+        <div class="meter"><i style="width: {{ q.pct }}%"></i></div></div>
+      <span class="q-rew">{% if q.done %}✓{% else %}{{ q.have }}/{{ q.need }}{% endif %}<em>+{{ q.reward }} XP</em></span>
+    </div>
+    {% endfor %}
+  </div>
+  <small class="q-note">Прогресс учитывает и записи на эту неделю, а XP начисляется после посещения.</small>
+</section>
 
 <div class="pf-cols">
   <section class="box">

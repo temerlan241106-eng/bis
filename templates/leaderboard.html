@@ -1,0 +1,31 @@
+{% extends "app_layout.html" %}
+{% block title %}Рейтинг · FitnessIT{% endblock %}
+{% block content %}
+<h2>Рейтинг студентов KBTU</h2>
+<p class="sub">Очки (XP) даются за посещённые занятия, новые дисциплины, достижения и недельные квесты. Отмена записи очки не снимает: считается только то, что ты отходил.</p>
+<div class="lb-cols">
+  {% for key, title, unit in [('xp', 'Топ по XP', 'XP'), ('week', 'Неделя: занятий', 'зан.')] %}
+  <section class="box lb">
+    <h3>{{ title }}</h3>
+    {% if board[key].top %}
+    <ol class="lb-list">
+      {% for e in board[key].top %}
+      <li class="{{ 'me' if e.id == me }} {{ 'p' ~ e.rank if e.rank <= 3 and not e.tie }}">
+        <span class="pos">{{ e.rank if e.tie else {1: '🥇', 2: '🥈', 3: '🥉'}.get(e.rank, e.rank) }}</span>
+        <i class="avatar">{{ e.name[:1]|upper }}</i>
+        <span class="nm"><b>{{ e.name }}</b><small>Ур. {{ e.level.n }} · {{ e.level.name }}</small></span>
+        <span class="sc">{{ e[key] }} <small>{{ unit }}</small></span>
+      </li>
+      {% endfor %}
+    </ol>
+    {% if board[key].mine %}
+    <div class="lb-me"><span>Ты сейчас</span><b>#{{ board[key].mine.rank }} · {{ board[key].mine[key] }} {{ unit }}</b></div>
+    {% endif %}
+    {% else %}
+    <p class="sub">Пока пусто. Запишись на занятие — и стань первым в списке.</p>
+    <a class="btn" href="{{ url_for('home') }}">Выбрать занятие</a>
+    {% endif %}
+  </section>
+  {% endfor %}
+</div>
+{% endblock %}
