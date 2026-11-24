@@ -7,6 +7,7 @@
 """
 import base64
 import sqlite3
+import time
 
 import requests
 
@@ -115,8 +116,19 @@ class Connection:
         reqs = [{"type": "execute", "stmt": s} for s in stmts]
         if not keep_open:
             reqs.append({"type": "close"})
-        r = _session.post(f"{self.base}/v2/pipeline", headers=self.headers, timeout=self.timeout,
-                          json={"baton": self.baton, "requests": reqs})
+        body = {"baton": self.baton, "requests": reqs}
+        # при сбое сети (DNS, обрыв соединения) повторяем; внутри транзакции — нет,
+        # чтобы не выполнить её часть дважды
+        attempts = 3 if self.baton is None else 1
+        for i in range(attempts):
+            try:
+                r = _session.post(f"{self.base}/v2/pipeline", headers=self.headers,
+                                  timeout=self.timeout, json=body)
+                break
+            except requests.ConnectionError as e:
+                if i == attempts - 1:
+                    raise sqlite3.OperationalError(f"Нет связи с Turso: {e}") from e
+                time.sleep(0.4 * (i + 1))
         if r.status_code != 200:
             raise sqlite3.OperationalError(f"Turso HTTP {r.status_code}: {r.text[:300]}")
         data = r.json()
