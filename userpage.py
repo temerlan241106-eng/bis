@@ -5,19 +5,13 @@ from datetime import date, datetime, timedelta
 from flask import Blueprint, g, render_template
 
 import booking
+import game
+import plans
 from auth import login_required
-from db import get_db
+from db import batch, get_db
 
 bp = Blueprint("profile", __name__)
 
-# (порог занятий, название, подпись)
-LEVELS = [
-    (0, "Новичок", "Первый шаг — самый трудный"),
-    (3, "Разогрелся", "Зал уже знает твоё лицо"),
-    (8, "Постоянный гость", "Привычка пошла в рост"),
-    (15, "Железный", "Штанга тебя уважает"),
-    (30, "Легенда зала", "Тренеры здороваются первыми"),
-]
 WEEKS = 8
 XP_PER_CLASS, XP_NEW_TYPE, XP_PER_ACH, XP_WEEK3, XP_EARLY_WEEK = 10, 5, 15, 30, 10
 DAYPARTS = [(12, "Жаворонок", "🌅", "утренние занятия"),
@@ -32,19 +26,6 @@ def _parse(s):
 
 def _monday(d):
     return d - timedelta(days=d.weekday())
-
-
-def level_for(count):
-    idx = max(i for i, lv in enumerate(LEVELS) if count >= lv[0])
-    cur = LEVELS[idx]
-    nxt = LEVELS[idx + 1] if idx + 1 < len(LEVELS) else None
-    if nxt:
-        pct = int((count - cur[0]) / (nxt[0] - cur[0]) * 100)
-    else:
-        pct = 100
-    return {"n": idx + 1, "name": cur[1], "tagline": cur[2], "pct": pct,
-            "next_name": nxt[1] if nxt else None,
-            "left": (nxt[0] - count) if nxt else 0}
 
 
 def week_streak(days, today):
@@ -90,11 +71,12 @@ BOOKING_ROWS_SQL = """SELECT b.user_id, s.starts_at, s.ends_at, ct.name AS class
 
 
 def client_stats(conn, user_id, now=None):
-    rows = conn.execute(BOOKING_ROWS_SQL.format(extra="AND b.user_id = ?"), (user_id,)).fetchall()
-    return stats_from_rows(rows, now)
+    return game.client_data(conn, user_id, now)["stats"]
 
 
-def stats_from_rows(rows, now=None):
+def stats_from_rows(rows, now=None, premium_periods=(), bonus=0):
+    """Статистика из истории записей. premium_periods — периоды Premium (x1.5 XP за занятия),
+    bonus — бонусный XP (сундуки, подтверждение почты, покупка Premium)."""
     now = now or datetime.now()
     now_s = booking.now_str(now)
     done = [r for r in rows if r["starts_at"] <= now_s]
@@ -156,8 +138,10 @@ def stats_from_rows(rows, now=None):
     ach_got = sum(1 for a in ach if a[3])
 
     # XP: всё считается из истории, поэтому очки только растут
-    xp = (XP_PER_CLASS * count + XP_NEW_TYPE * variety + XP_PER_ACH * ach_got
-          + XP_WEEK3 * weeks3 + XP_EARLY_WEEK * early_weeks)
+    class_xp = sum(XP_PER_CLASS * (plans.PREMIUM_XP_MULT if plans.premium_at(premium_periods, r["starts_at"]) else 1)
+                   for r in done)
+    xp = (int(round(class_xp)) + XP_NEW_TYPE * variety + XP_PER_ACH * ach_got
+          + XP_WEEK3 * weeks3 + XP_EARLY_WEEK * early_weeks + bonus)
 
     # квесты текущей недели (прогресс считаем и по записям на будущее)
     wk_end = cur_mon + timedelta(days=7)
@@ -177,7 +161,7 @@ def stats_from_rows(rows, now=None):
 
     return {
         "count": count, "minutes": minutes, "hours": round(minutes / 60, 1),
-        "streak": streak, "level": level_for(count),
+        "streak": streak, "level": game.level_for(xp), "league": game.league_for(xp),
         "fav_class": top(classes), "fav_trainer": top(trainers), "fav_hall": top(halls),
         "fav_wd": WD_FULL[fav_wd] if fav_wd is not None else None,
         "daypart": part, "bars": bars, "variety": variety,
@@ -187,6 +171,7 @@ def stats_from_rows(rows, now=None):
         "week_n": len(this_week),
         "next": upcoming[0] if upcoming else None, "upcoming": len(upcoming),
         "recent": list(reversed(done[-3:])),
+        "rows": rows,
     }
 
 
@@ -207,28 +192,46 @@ def trainer_stats(conn, user_id):
 
 
 def admin_stats(conn):
-    one = lambda q: conn.execute(q).fetchone()[0]
-    return {
-        "clients": one("SELECT COUNT(*) FROM users WHERE role='client'"),
-        "trainers": one("SELECT COUNT(*) FROM users WHERE role='trainer'"),
-        "slots": one("SELECT COUNT(*) FROM slots WHERE status='active'"),
-        "bookings": one("SELECT COUNT(*) FROM bookings WHERE status='booked'"),
-    }
+    now_s = booking.now_str()
+    keys = ["clients", "trainers", "slots", "bookings", "premium", "revenue"]
+    res = batch(conn, [
+        ("SELECT COUNT(*) FROM users WHERE role='client'", ()),
+        ("SELECT COUNT(*) FROM users WHERE role='trainer'", ()),
+        ("SELECT COUNT(*) FROM slots WHERE status='active'", ()),
+        ("SELECT COUNT(*) FROM bookings WHERE status='booked'", ()),
+        ("SELECT COUNT(DISTINCT user_id) FROM subscriptions WHERE starts_at <= ? AND ends_at > ?", (now_s, now_s)),
+        ("SELECT COALESCE(SUM(price), 0) FROM subscriptions", ()),
+    ])
+    return {k: r.fetchone()[0] for k, r in zip(keys, res)}
 
 
 def leaderboard(conn, now=None):
     """Рейтинг студентов: по XP за всё время и по занятиям на этой неделе."""
     now = now or datetime.now()
-    names = {r["id"]: r["name"] for r in conn.execute("SELECT id, name FROM users WHERE role = 'client'")}
-    by_user = {uid: [] for uid in names}
-    for r in conn.execute(BOOKING_ROWS_SQL.format(extra="")):
+    users, bookings, subs, bonus = batch(conn, [
+        ("SELECT id, name, title, frame FROM users WHERE role = 'client'", ()),
+        (BOOKING_ROWS_SQL.format(extra=""), ()),
+        ("SELECT user_id, starts_at, ends_at FROM subscriptions", ()),
+        ("SELECT user_id, SUM(amount) AS xp FROM bonus_xp GROUP BY user_id", ()),
+    ])
+    users = {r["id"]: r for r in users.fetchall()}
+    by_user = {uid: [] for uid in users}
+    for r in bookings.fetchall():
         if r["user_id"] in by_user:
             by_user[r["user_id"]].append(r)
+    pers = {}
+    for r in subs.fetchall():
+        pers.setdefault(r["user_id"], []).append((r["starts_at"], r["ends_at"]))
+    bonus = {r["user_id"]: r["xp"] for r in bonus.fetchall()}
+    now_s = now.strftime(plans.FMT)
     entries = []
     for uid, rows in by_user.items():
-        st = stats_from_rows(rows, now)
-        entries.append({"id": uid, "name": names[uid], "xp": st["xp"], "count": st["count"],
-                        "level": st["level"], "week": st["week_n"]})
+        p = pers.get(uid, [])
+        premium = any(s <= now_s < e for s, e in p)
+        st = stats_from_rows(rows, now, p, bonus.get(uid, 0))
+        entries.append({"id": uid, "name": users[uid]["name"], "xp": st["xp"], "count": st["count"],
+                        "level": st["level"], "week": st["week_n"], "league": st["league"],
+                        "premium": premium, **game.user_style(users[uid], st, premium)})
 
     def rank(key):
         ordered = sorted(entries, key=lambda e: (-e[key], e["name"].lower()))
@@ -259,11 +262,18 @@ def leaderboard_page():
 def profile():
     conn = get_db()
     role = g.user["role"]
-    created = conn.execute("SELECT created_at FROM users WHERE id = ?", (g.user["id"],)).fetchone()[0]
+    created = g.user["created_at"]
     since = datetime.strptime(created[:10], "%Y-%m-%d").date()
     ctx = {"since": since, "days_with_us": (date.today() - since).days}
     if role == "client":
-        ctx["s"] = client_stats(conn, g.user["id"])
+        h = game.hud()
+        d = h["data"]
+        ctx["s"] = d["stats"]
+        ctx["titles"], ctx["frames"] = game.cosmetics(d["stats"], d["premium"])
+        ctx["sub"] = {"active": d["premium"], "until": plans.fmt_ru(d["premium_until"]),
+                      "had": bool(d["periods"])}
+        ctx["cur_title"] = g.user["title"]
+        ctx["cur_frame"] = g.user["frame"] or "none"
         board = leaderboard(conn)["xp"]
         mine = next((e for e in board if e["id"] == g.user["id"]), None)
         ctx["rank"] = mine["rank"] if mine and mine["xp"] > 0 else None

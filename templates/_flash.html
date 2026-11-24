@@ -1,5 +1,9 @@
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% for category, message in messages %}
-    <div class="flash {{ category }}">{{ message }}</div>
+    <div class="flash {{ category }}" role="status" {% if category in ('xp', 'levelup') %}data-fx="{{ category }}"{% endif %}>
+      <i class="flash-ico">{{ {'success': '✓', 'error': '!', 'xp': '⭐', 'levelup': '🎉', 'limit': '🔒', 'info': 'i'}.get(category, '•') }}</i>
+      <span>{{ message }}</span>
+      {% if category == 'limit' %}<a class="btn small gold" href="{{ url_for('premium.pricing') }}">Premium</a>{% endif %}
+    </div>
   {% endfor %}
 {% endwith %}

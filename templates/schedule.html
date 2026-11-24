@@ -1,7 +1,20 @@
 {% extends "app_layout.html" %}
 {% block title %}Расписание · FitnessIT{% endblock %}
 {% block content %}
-<h2>Расписание</h2>
+<div class="page-head">
+  <div><span class="kicker">Выбери тренировку</span><h2>Твоё <span class="serif">расписание</span></h2></div>
+  {% if plan %}
+    {% if plan.premium %}
+    <div class="plan-pill premium"><i>👑</i><span><b>Premium</b><small>безлимит · x1.5 XP</small></span></div>
+    {% else %}
+    <a class="plan-pill" href="{{ url_for('premium.pricing') }}" title="Неделя {{ plan.week }}">
+      <span><b>Free · {{ plan.used }}/{{ plan.limit }}</b><small>записей на неделю {{ plan.week }}</small></span>
+      <span class="pips">{% for i in range(plan.limit) %}<i class="{{ 'on' if i < plan.used }}"></i>{% endfor %}</span>
+      <em>Безлимит →</em>
+    </a>
+    {% endif %}
+  {% endif %}
+</div>
 <form class="filters" method="get" action="{{ url_for('home') }}">
   <label>Тип
     <select name="type"><option value="">Все</option>
@@ -54,7 +67,7 @@
       {% elif free > 0 %}
         <form method="post" action="{{ url_for('schedule.book', slot_id=s.id) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button type="submit">Записаться</button></form>
+          <button type="submit" class="book-btn">Записаться <em>+10 XP</em></button></form>
       {% else %}<button disabled>Занято</button>{% endif %}
     {% endif %}
   </div>

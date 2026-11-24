@@ -100,7 +100,8 @@ def seed(conn):
     """Идемпотентно добавляет пользователей, залы, типы и занятия."""
     for name, email, pwd, role in USERS:
         conn.execute(
-            "INSERT OR IGNORE INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)",
+            "INSERT OR IGNORE INTO users (name, email, password_hash, role, email_verified) "
+            "VALUES (?, ?, ?, ?, 1)",
             (name, email, generate_password_hash(pwd), role),
         )
     for row in CLASS_TYPES:

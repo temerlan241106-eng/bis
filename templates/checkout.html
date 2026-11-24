@@ -1,0 +1,68 @@
+{% extends "app_layout.html" %}
+{% block title %}Оплата · FitnessIT{% endblock %}
+{% block content %}
+<a class="back" href="{{ url_for('premium.pricing') }}">← Тарифы</a>
+<div class="checkout">
+  <section class="box pay">
+    <span class="kicker">Оформление</span>
+    <h2>Premium · {{ plan.name }}</h2>
+    <div class="demo-note">🧪 Демо-оплата: деньги не списываются, номер карты не сохраняется.
+      Тестовая карта <code>4242 4242 4242 4242</code>, любая будущая дата и любой CVC.
+      Отказ банка — <code>4000 0000 0000 0002</code>.</div>
+
+    <div class="pay-tabs" role="tablist">
+      <button type="button" class="tab {{ 'on' if form.method != 'kaspi' }}" data-tab="card">💳 Карта</button>
+      <button type="button" class="tab {{ 'on' if form.method == 'kaspi' }}" data-tab="kaspi">📱 Kaspi QR</button>
+    </div>
+
+    <form method="post" class="pay-form" data-panel="card" {{ 'hidden' if form.method == 'kaspi' }} novalidate autocomplete="off">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="method" value="card">
+      <div class="card3d" data-card>
+        <div class="card-face front">
+          <div class="card-top"><span class="chip-ic"></span><b data-card-brand>VISA</b></div>
+          <div class="card-num" data-card-num>•••• •••• •••• ••••</div>
+          <div class="card-bot">
+            <span><small>Владелец</small><b data-card-holder>{{ form.holder or 'IVAN IVANOV' }}</b></span>
+            <span><small>Срок</small><b data-card-exp>{{ form.exp or 'ММ/ГГ' }}</b></span>
+          </div>
+        </div>
+        <div class="card-face back"><div class="stripe"></div><div class="cvc-box"><small>CVC</small><b data-card-cvc>•••</b></div></div>
+      </div>
+
+      <label for="number">Номер карты</label>
+      <input id="number" name="number" inputmode="numeric" placeholder="4242 4242 4242 4242" maxlength="23" required data-in="num">
+      <label for="holder">Имя на карте</label>
+      <input id="holder" name="holder" placeholder="IVAN IVANOV" maxlength="60" value="{{ form.holder }}" required data-in="holder">
+      <div class="row2">
+        <span><label for="exp">Срок</label>
+        <input id="exp" name="exp" inputmode="numeric" placeholder="ММ/ГГ" maxlength="5" value="{{ form.exp }}" required data-in="exp"></span>
+        <span><label for="cvc">CVC</label>
+        <input id="cvc" name="cvc" inputmode="numeric" placeholder="123" maxlength="4" required data-in="cvc"></span>
+      </div>
+      <button type="submit" class="pay-btn gold" data-pay-btn>Оплатить {{ plan.price|tenge }}</button>
+    </form>
+
+    <form method="post" class="pay-form kaspi" data-panel="kaspi" {{ 'hidden' if form.method != 'kaspi' }}>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="method" value="kaspi">
+      <div class="qr" aria-label="Демо QR-код">
+        {% for i in range(81) %}{% set r, c = i // 9, i % 9 %}<i class="{{ 'on' if (r < 3 and c < 3) or (r < 3 and c > 5) or (r > 5 and c < 3) or ((r * 5 + c * 3 + r * c) % 4 == 0) }}"></i>{% endfor %}
+      </div>
+      <p class="sub">Отсканируй QR в приложении Kaspi.kz и подтверди платёж на <b>{{ plan.price|tenge }}</b>. Это демо: просто нажми кнопку ниже.</p>
+      <button type="submit" class="pay-btn" data-pay-btn>Я оплатил в Kaspi</button>
+    </form>
+  </section>
+
+  <aside class="box summary">
+    <h3>Заказ</h3>
+    <div class="sum-row"><span>Premium · {{ plan.name }}</span><b>{{ plan.price|tenge }}</b></div>
+    <div class="sum-row muted"><span>В месяц</span><span>{{ plan.per_month|tenge }}</span></div>
+    {% if plan.save > 0 %}<div class="sum-row good"><span>Экономия</span><span>−{{ plan.save }}%</span></div>{% endif %}
+    <div class="sum-row bonus"><span>Бонус</span><span>⭐ +50 XP</span></div>
+    <hr>
+    <div class="sum-row total"><span>Итого</span><b>{{ plan.price|tenge }}</b></div>
+    <small class="q-note">Подписка не продлевается автоматически.</small>
+  </aside>
+</div>
+{% endblock %}

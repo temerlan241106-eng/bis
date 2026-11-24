@@ -1,19 +1,20 @@
 {% extends "app_layout.html" %}
+{% from "_macros.html" import avatar %}
 {% block title %}Профиль · FitnessIT{% endblock %}
 {% block content %}
 {% set role_ru = {'client': 'Атлет', 'trainer': 'Тренер', 'admin': 'Админ'}[g.user['role']] %}
-<section class="pf-hero">
-  <i class="pf-avatar">{{ g.user['name'][:1]|upper }}</i>
+<section class="pf-hero {{ 'is-premium' if hud and hud.premium }}">
+  {{ avatar(g.user['name'], hud.frame if hud else 'none', 'xl', hud and hud.premium) }}
   <div class="pf-id">
-    <span class="pf-role">{{ role_ru }}</span>
+    <span class="pf-role">{{ role_ru }}{% if hud and hud.title %} · {{ hud.title }}{% endif %}{% if hud %} · <span class="lg lg-{{ hud.league.code }}">{{ hud.league.icon }} {{ hud.league.name }}</span>{% endif %}</span>
     <h2>{{ g.user['name'] }}</h2>
     <small>{{ g.user['email'] }} · с нами {{ since.strftime('%d.%m.%Y') }}{% if days_with_us > 0 %} ({{ days_with_us }} дн.){% endif %}</small>
   </div>
   {% if s %}
   <div class="pf-level">
     <div class="lv-top"><b>Ур. {{ s.level.n }}</b><span>{{ s.level.name }}</span></div>
-    <div class="meter"><i style="width: {{ s.level.pct }}%"></i></div>
-    <small>{% if s.level.next_name %}Ещё {{ s.level.left }} зан. до «{{ s.level.next_name }}»{% else %}Максимальный уровень 🎉{% endif %}</small>
+    <div class="meter glow"><i style="width: {{ s.level.pct }}%"></i></div>
+    <small>{% if s.level.next_name %}Ещё {{ s.level.left }} XP до «{{ s.level.next_name }}»{% else %}Максимальный уровень 🎉{% endif %}</small>
     <div class="xp-row"><span class="xp">⭐ {{ s.xp }} XP</span>{% if rank %}<a class="rank-chip" href="{{ url_for('profile.leaderboard_page') }}">#{{ rank }} из {{ rank_total }}</a>{% endif %}</div>
   </div>
   {% endif %}
@@ -25,6 +26,37 @@
   <div class="stat"><b>{{ s.hours }}</b><span>часов в зале</span></div>
   <div class="stat hot"><b>{{ s.streak }}{% if s.streak %}<em>🔥</em>{% endif %}</b><span>нед. подряд</span></div>
   <div class="stat"><b>{{ s.upcoming }}</b><span>впереди в планах</span></div>
+</div>
+
+<div class="pf-cols two">
+  <section class="box sub-card {{ 'active' if sub.active }}">
+    {% if sub.active %}
+    <span class="chip gold">👑 Premium активен</span>
+    <h3>До {{ sub.until }}</h3>
+    <ul class="perks"><li>♾️ Безлимитная запись</li><li>⚡ x1.5 XP за тренировки</li><li>🎁 2 сундука в день</li><li>✨ Золотая рамка и титул</li></ul>
+    <a class="btn ghost-btn" href="{{ url_for('premium.pricing') }}">Продлить</a>
+    {% else %}
+    <span class="chip">Тариф Free</span>
+    <h3>3 записи в неделю</h3>
+    <p class="sub">Premium: безлимит, x1.5 XP, 2 сундука в день и золотая рамка. От {{ premium_from|tenge }} в месяц.</p>
+    <a class="btn gold" href="{{ url_for('premium.pricing') }}">👑 Перейти на Premium</a>
+    {% endif %}
+  </section>
+  <section class="box chest-panel">
+    <h3>Ежедневный сундук</h3>
+    <div class="chest-row">
+      <span class="chest-big {{ 'ready' if hud.chests_left }}">🎁</span>
+      <div>
+        {% if hud.chests_left %}
+        <p class="sub">Доступно сегодня: <b>{{ hud.chests_left }}</b>. Внутри 5–75 XP.</p>
+        <button type="button" data-chest>Открыть сундук</button>
+        {% else %}
+        <p class="sub">Сегодня сундуки открыты. Новый — завтра в 00:00.</p>
+        <button type="button" disabled>Завтра 🌙</button>
+        {% endif %}
+      </div>
+    </div>
+  </section>
 </div>
 
 {% if s.next %}
@@ -95,6 +127,34 @@
   </div>
 </section>
 
+<section class="box" id="style">
+  <h3>Стиль профиля <span class="count">рамки и титулы открываются за прогресс</span></h3>
+  <form method="post" action="{{ url_for('game.set_style') }}" class="style-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <h4>Рамка аватара</h4>
+    <div class="pick-grid">
+      {% for f in frames %}
+      <label class="pick {{ 'locked' if not f.open }}">
+        <input type="radio" name="frame" value="{{ f.code }}" {{ 'checked' if f.code == cur_frame }} {{ 'disabled' if not f.open }}>
+        {{ avatar(g.user['name'], f.code) }}
+        <b>{{ f.name }}</b><small>{{ '✓ открыто' if f.open else '🔒 ' ~ f.how }}</small>
+      </label>
+      {% endfor %}
+    </div>
+    <h4>Титул</h4>
+    <div class="pick-grid titles">
+      <label class="pick"><input type="radio" name="title" value="" {{ 'checked' if not cur_title }}><b>Без титула</b><small>&nbsp;</small></label>
+      {% for t in titles %}
+      <label class="pick {{ 'locked' if not t.open }}">
+        <input type="radio" name="title" value="{{ t.code }}" {{ 'checked' if t.code == cur_title }} {{ 'disabled' if not t.open }}>
+        <b>{{ t.name }}</b><small>{{ '✓ открыто' if t.open else '🔒 ' ~ t.how }}</small>
+      </label>
+      {% endfor %}
+    </div>
+    <button type="submit">Сохранить стиль</button>
+  </form>
+</section>
+
 {% if s.recent %}
 <section class="box">
   <h3>Последние тренировки</h3>
@@ -126,6 +186,8 @@
   <div class="stat"><b>{{ a.trainers }}</b><span>тренеров</span></div>
   <div class="stat"><b>{{ a.slots }}</b><span>активных занятий</span></div>
   <div class="stat hot"><b>{{ a.bookings }}</b><span>активных записей</span></div>
+  <div class="stat"><b>{{ a.premium }}</b><span>👑 Premium сейчас</span></div>
+  <div class="stat"><b>{{ a.revenue|tenge }}</b><span>оплат (демо)</span></div>
 </div>
 <section class="box"><h3>Пульс зала</h3>
   <p class="sub">Управление расписанием — в панели администратора.</p>

@@ -4,8 +4,8 @@ from flask import (Blueprint, flash, g, redirect, render_template, request,
                    url_for)
 
 import booking
-from auth import login_required
-from db import get_db
+from auth import login_required, verified_required
+from db import batch, get_db
 from roles import roles_required
 
 bp = Blueprint("schedule", __name__)
@@ -42,18 +42,15 @@ def render_schedule():
     hall_id = request.args.get("hall", type=int)
     only_free = request.args.get("free") == "1"
     today = date.today()
-    # выбранный день; по умолчанию — ближайший день (начиная с сегодня), где есть занятия
+    # выбранный день; по умолчанию — ближайший день (начиная с сегодня), где есть занятия.
+    # Всё (день, занятия, справочники) — одним обращением к базе: для облачной Turso это важно.
     day = parse_day(request.args.get("day"))
-    if day is None:
-        first = conn.execute(
-            "SELECT substr(MIN(starts_at), 1, 10) FROM slots "
-            "WHERE status = 'active' AND substr(starts_at, 1, 10) >= ?",
-            (today.isoformat(),),
-        ).fetchone()[0]
-        day = parse_day(first) or today
-
-    where = ["s.status = 'active'", "substr(s.starts_at, 1, 10) = :day"]
-    params = {"uid": g.user["id"], "day": day.isoformat()}
+    first_sql = ("SELECT COALESCE((SELECT substr(MIN(starts_at), 1, 10) FROM slots "
+                 "WHERE status = 'active' AND substr(starts_at, 1, 10) >= :today), :today)")
+    where = ["s.status = 'active'", "substr(s.starts_at, 1, 10) = " + (":day" if day else f"({first_sql})")]
+    params = {"uid": g.user["id"], "today": today.isoformat()}
+    if day:
+        params["day"] = day.isoformat()
     if type_id:
         where.append("s.class_type_id = :type")
         params["type"] = type_id
@@ -65,8 +62,18 @@ def render_schedule():
         params["hall"] = hall_id
 
     sql = SLOT_SQL + " WHERE " + " AND ".join(where) + " ORDER BY s.starts_at"
+    first, slot_rows, types, trainers, halls = batch(conn, [
+        (first_sql, {"today": today.isoformat()}),
+        (sql, params),
+        ("SELECT id, name FROM class_types ORDER BY name", ()),
+        ("SELECT id, name FROM users WHERE role = 'trainer' ORDER BY name", ()),
+        ("SELECT id, name FROM halls ORDER BY name", ()),
+    ])
+    if day is None:
+        day = parse_day(first.fetchone()[0]) or today
+
     now = booking.now_str()
-    slots = [dict(r) for r in conn.execute(sql, params)]
+    slots = [dict(r) for r in slot_rows.fetchall()]
     for s in slots:
         # то же правило, что и в booking.book: занятие уже началось или прошло
         s["past"] = s["starts_at"] <= now
@@ -88,17 +95,27 @@ def render_schedule():
             "url": url_for("home", day=d.isoformat(), **keep),
         })
 
+    h = None
+    if g.user["role"] == "client":
+        import game, plans
+        h = game.hud()
+        mon = day - timedelta(days=day.weekday())
+        lo, hi = mon.isoformat(), (mon + timedelta(days=7)).isoformat()
+        used = sum(1 for r in h["data"]["stats"]["rows"] if lo <= r["starts_at"] < hi)
+        h = {"premium": h["premium"], "limit": plans.FREE_WEEKLY_LIMIT,
+             "used": min(used, plans.FREE_WEEKLY_LIMIT),
+             "week": f"{mon.strftime('%d.%m')}–{(mon + timedelta(days=6)).strftime('%d.%m')}"}
+
     return render_template(
         "schedule.html",
+        plan=h,
         slots=slots,
         tabs=tabs,
         day=day,
         day_label=f"{WEEKDAYS[day.weekday()]}, {day.strftime('%d.%m.%Y')}",
-        types=conn.execute("SELECT id, name FROM class_types ORDER BY name").fetchall(),
-        trainers=conn.execute(
-            "SELECT id, name FROM users WHERE role = 'trainer' ORDER BY name"
-        ).fetchall(),
-        halls=conn.execute("SELECT id, name FROM halls ORDER BY name").fetchall(),
+        types=types.fetchall(),
+        trainers=trainers.fetchall(),
+        halls=halls.fetchall(),
         f={"type": type_id, "trainer": trainer_id, "hall": hall_id,
            "day": day.isoformat(), "free": only_free},
     )
@@ -106,12 +123,13 @@ def render_schedule():
 
 @bp.route("/book/<int:slot_id>", methods=("POST",))
 @roles_required("client")
+@verified_required
 def book(slot_id):
     try:
         booking.book(get_db(), g.user["id"], slot_id)
-        flash("Вы записаны на занятие. +10 XP после посещения 💪", "success")
+        flash("Записан! +10 XP после тренировки 💪", "xp")
     except booking.BookingError as e:
-        flash(str(e), "error")
+        flash(str(e), "limit" if "Лимит" in str(e) else "error")
     return redirect(request.referrer or url_for("home"))
 
 

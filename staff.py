@@ -4,32 +4,31 @@ from flask import (Blueprint, flash, g, redirect, render_template, request,
                    url_for)
 
 import booking
-from db import get_db
+from db import batch, get_db
 from roles import roles_required
 
 bp = Blueprint("staff", __name__)
 
 
 def slots_with_people(where="", params=()):
+    """Предстоящие занятия со списком записавшихся — двумя запросами, без запроса на каждое занятие."""
     conn = get_db()
-    slots = conn.execute(
-        f"""SELECT s.id, s.starts_at, s.capacity, s.status, ct.name AS class_name,
-                   u.name AS trainer_name, h.name AS hall_name
-            FROM slots s JOIN class_types ct ON ct.id = s.class_type_id
-            JOIN users u ON u.id = s.trainer_id
-            LEFT JOIN halls h ON h.id = s.hall_id
-            WHERE s.starts_at > ? {where} ORDER BY s.starts_at""",
-        (booking.now_str(), *params),
-    ).fetchall()
-    out = []
-    for s in slots:
-        people = conn.execute(
-            """SELECT u.name, u.email FROM bookings b JOIN users u ON u.id = b.user_id
-               WHERE b.slot_id = ? AND b.status = 'booked' ORDER BY u.name""",
-            (s["id"],),
-        ).fetchall()
-        out.append({**dict(s), "people": people})
-    return out
+    now = booking.now_str()
+    slots, people = batch(conn, [
+        (f"""SELECT s.id, s.starts_at, s.capacity, s.status, ct.name AS class_name,
+                    u.name AS trainer_name, h.name AS hall_name
+             FROM slots s JOIN class_types ct ON ct.id = s.class_type_id
+             JOIN users u ON u.id = s.trainer_id
+             LEFT JOIN halls h ON h.id = s.hall_id
+             WHERE s.starts_at > ? {where} ORDER BY s.starts_at""", (now, *params)),
+        (f"""SELECT b.slot_id, u.name, u.email FROM bookings b
+             JOIN users u ON u.id = b.user_id JOIN slots s ON s.id = b.slot_id
+             WHERE b.status = 'booked' AND s.starts_at > ? {where} ORDER BY u.name""", (now, *params)),
+    ])
+    by_slot = {}
+    for p in people.fetchall():
+        by_slot.setdefault(p["slot_id"], []).append(p)
+    return [{**dict(s), "people": by_slot.get(s["id"], [])} for s in slots.fetchall()]
 
 
 @bp.route("/trainer")

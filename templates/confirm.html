@@ -1,0 +1,28 @@
+{% extends "auth_layout.html" %}
+{% block title %}Подтверждение почты · FitnessIT{% endblock %}
+{% block card %}
+  <span class="kicker">Шаг 2 из 2</span>
+  <h2>Введи код <span class="serif grad">из письма</span></h2>
+  <p class="sub">Код действует {{ minutes }} минут. Аккаунт создастся сразу после проверки.</p>
+  <div class="code-mail"><i>✉️</i><span><small class="sub">Отправили на</small><br><b>{{ email }}</b></span></div>
+  {% include "_flash.html" %}
+  <form method="post" data-code-form novalidate autocomplete="off">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" data-code-value>
+    <div class="code-inputs" data-code-inputs>
+      {% for i in range(6) %}<input type="text" inputmode="numeric" maxlength="6" aria-label="Цифра {{ i + 1 }}" {{ 'autofocus autocomplete=one-time-code' if i == 0 }}>{% endfor %}
+    </div>
+    <noscript><input type="text" name="code" inputmode="numeric" maxlength="6" placeholder="123456"></noscript>
+    <button type="submit">Подтвердить и войти</button>
+  </form>
+  <div class="code-actions">
+    <a href="{{ url_for('auth.register') }}">← Изменить почту</a>
+    <form method="post" action="{{ url_for('auth.resend_code') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="link-btn" data-resend data-wait="{{ wait }}" {{ 'disabled' if wait }}>
+        {% if wait %}Отправить снова через {{ wait }} с{% else %}Отправить код ещё раз{% endif %}
+      </button>
+    </form>
+  </div>
+  <p class="alt">Письма нет? Проверь папку «Спам» или «Промоакции».</p>
+{% endblock %}

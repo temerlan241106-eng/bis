@@ -1,0 +1,50 @@
+{% extends "app_layout.html" %}
+{% block title %}Premium · FitnessIT{% endblock %}
+{% block content %}
+<section class="prem-hero">
+  <span class="kicker">FitnessIT Premium</span>
+  <h2>Тренируйся без лимитов.<br><span class="serif grad-gold">качайся в 1.5 раза быстрее</span></h2>
+  <p class="sub">Один тариф, три срока. Чем дольше — тем дешевле месяц.
+    {% if until %}<br><b class="gold-c">👑 У тебя Premium до {{ until }}.</b> Продление добавится к текущему сроку.{% endif %}</p>
+</section>
+
+<div class="plans">
+  {% for p in plans_list %}
+  <article class="plan {{ 'best' if p.code == 'year' }}">
+    {% if p.code == 'year' %}<span class="ribbon">Хит · −{{ p.save }}%</span>{% elif p.save > 0 %}<span class="ribbon soft">−{{ p.save }}%</span>{% endif %}
+    <span class="plan-tag">{{ p.tag }}</span>
+    <h3>{{ p.name }}</h3>
+    <div class="price">{{ p.price|tenge }}</div>
+    <small class="per">{{ p.per_month|tenge }} / месяц</small>
+    <ul class="perks">
+      <li>♾️ Безлимитная запись</li>
+      <li>⚡ x{{ mult }} XP за тренировки</li>
+      <li>🎁 2 сундука в день</li>
+      <li>👑 Золотая рамка и титул</li>
+      <li>⭐ +50 XP сразу после оплаты</li>
+    </ul>
+    {% if g.user['role'] == 'client' %}
+    <a class="btn {{ 'gold' if p.code == 'year' }}" href="{{ url_for('premium.checkout', code=p.code) }}">{{ 'Продлить' if until else 'Выбрать' }}</a>
+    {% else %}
+    <button disabled>Только для студентов</button>
+    {% endif %}
+  </article>
+  {% endfor %}
+</div>
+
+<section class="box compare">
+  <h3>Free или Premium</h3>
+  <div class="cmp-wrap"><table class="cmp">
+    <thead><tr><th></th><th>Free</th><th class="gold-c">Premium</th></tr></thead>
+    <tbody>
+      <tr><td>Записей в неделю</td><td>{{ limit }}</td><td>♾️ без лимита</td></tr>
+      <tr><td>XP за занятие</td><td>10</td><td>15</td></tr>
+      <tr><td>Ежедневные сундуки</td><td>1</td><td>2</td></tr>
+      <tr><td>Квесты, достижения, рейтинг</td><td>✓</td><td>✓</td></tr>
+      <tr><td>Золотая рамка и титул «Premium-атлет»</td><td>—</td><td>✓</td></tr>
+      <tr><td>Корона 👑 в рейтинге</td><td>—</td><td>✓</td></tr>
+    </tbody>
+  </table></div>
+  <small class="q-note">Это учебный проект: оплата демонстрационная, деньги не списываются.</small>
+</section>
+{% endblock %}

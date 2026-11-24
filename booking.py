@@ -1,5 +1,7 @@
-"""Правила записи на занятия. Все проверки и вставка идут в одной транзакции."""
+"""Правила записи на занятия. Все проверки (6 штук) и вставка идут в одной транзакции."""
 from datetime import datetime, timedelta
+
+import plans
 
 FMT = "%Y-%m-%d %H:%M"
 CANCEL_BEFORE = timedelta(hours=2)
@@ -46,6 +48,20 @@ def book(conn, user_id, slot_id, now=None):
         ).fetchone()[0]
         if taken >= slot["capacity"]:
             raise BookingError("Свободных мест нет.")
+        # 6. лимит тарифа Free: не больше FREE_WEEKLY_LIMIT записей на неделю занятия
+        if not plans.is_premium(conn, user_id, now):
+            day = datetime.strptime(slot["starts_at"], FMT).date()
+            mon = day - timedelta(days=day.weekday())
+            week_n = conn.execute(
+                """SELECT COUNT(*) FROM bookings b JOIN slots s ON s.id = b.slot_id
+                   WHERE b.user_id = ? AND b.status = 'booked' AND s.status = 'active'
+                     AND s.starts_at >= ? AND s.starts_at < ?""",
+                (user_id, mon.isoformat(), (mon + timedelta(days=7)).isoformat()),
+            ).fetchone()[0]
+            if week_n >= plans.FREE_WEEKLY_LIMIT:
+                raise BookingError(
+                    f"Лимит Free: {plans.FREE_WEEKLY_LIMIT} записи в неделю. "
+                    "Premium снимает ограничение 🚀")
 
         if old is None:
             conn.execute(

@@ -40,9 +40,15 @@ def test_register_requires_kbtu_domain(client):
 
 
 def test_register_and_login(client):
+    import re
+    import mailer
+    mailer.outbox.clear()
     r = client.post("/register", data={"name": "A", "email": "a@kbtu.kz",
                     "password": "12345678", "confirm": "12345678"})
-    assert r.status_code == 302
+    assert r.status_code == 302 and r.headers["Location"].endswith("/register/confirm")
+    code = re.search(r"\b(\d{6})\b", mailer.outbox[-1]["text"]).group(1)
+    assert client.post("/register/confirm", data={"code": code}).status_code == 302
+    client.post("/logout")
     assert login(client, "a@kbtu.kz", "12345678").status_code == 302
 
 

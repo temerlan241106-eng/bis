@@ -1,7 +1,7 @@
 {% extends "app_layout.html" %}
 {% block title %}Мои записи · FitnessIT{% endblock %}
 {% block content %}
-<h2>Мои записи</h2>
+<div class="page-head"><div><span class="kicker">Твои планы</span><h2>Мои <span class="serif">записи</span></h2></div></div>
 <div class="slots">
 {% for r in rows %}
   <div class="slot" style="--h: {{ r['class_name']|chue }}">

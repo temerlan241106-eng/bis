@@ -3,13 +3,32 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f4fc" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#110e1a" media="(prefers-color-scheme: dark)">
+  <script>try{var t=localStorage.getItem("theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
   <title>{% block title %}FitnessIT · KBTU Student Gym{% endblock %}</title>
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='logo.svg') }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Unbounded:wght@500;700;800&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:ital,opsz,wght@1,9..144,500;1,9..144,600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
+  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
   {% block body %}{% endblock %}
+  <div id="fx" aria-hidden="true"></div>
+  {% if hud and hud.levelup %}
+  <div class="modal show" id="levelup-modal" data-confetti="1">
+    <div class="modal-card levelup-card">
+      <div class="lu-badge">{{ hud.levelup.n }}</div>
+      <span class="kicker">Новый уровень</span>
+      <h2 class="serif">{{ hud.levelup.name }}</h2>
+      <p class="sub">{{ hud.levelup.tagline }}</p>
+      <button type="button" data-close>Погнали дальше 🚀</button>
+    </div>
+  </div>
+  {% endif %}
+  <script src="{{ url_for('static', filename='game.js') }}" defer></script>
 </body>
 </html>

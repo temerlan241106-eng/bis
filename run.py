@@ -16,7 +16,7 @@ PORT = int(os.environ.get("PORT", 5000))
 
 
 def ensure_deps():
-    needed = ["flask", "flask_wtf", "flask_limiter", "dotenv"]
+    needed = ["flask", "flask_wtf", "flask_limiter", "dotenv", "requests"]
     if all(importlib.util.find_spec(m) for m in needed):
         return
     print("Устанавливаю зависимости (один раз)...")
@@ -33,6 +33,10 @@ def ensure_env():
 
 
 def main():
+    try:
+        sys.stdout.reconfigure(errors="replace")  # кириллица/эмодзи в консоли Windows
+    except (AttributeError, ValueError):
+        pass
     ensure_deps()
     ensure_env()
 
@@ -41,8 +45,15 @@ def main():
     from db import get_db
 
     with app.app_context():
+        if app.config.get("TURSO_DATABASE_URL"):
+            print("База: Turso (облако) —", app.config["TURSO_DATABASE_URL"])
+        else:
+            print("База: локальный файл instance/fitnessit.db")
         if seed.seed_if_empty(get_db()):
             print("Добавлены тестовые данные (аккаунты — в README)")
+        import mailer
+        print("Почта:", "Gmail SMTP (" + app.config["MAIL_USERNAME"] + ")" if mailer.configured()
+              else "не настроена — письма печатаются здесь, в консоли")
 
     url = f"http://{HOST}:{PORT}"
     threading.Timer(1.2, lambda: webbrowser.open(url)).start()

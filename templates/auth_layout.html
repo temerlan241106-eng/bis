@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros.html" import theme_toggle %}
 {% block body %}
 <main class="split">
   <section class="hero">
@@ -9,21 +10,31 @@
 
     <div class="hero-copy">
       <span class="kicker">Kazakh-British Technical University · Almaty</span>
-      <h1>Train hard.<br><span class="grad">Code harder.</span></h1>
-      <p>Your gym at KBTU. Book a session between lectures, train with your groupmates, and turn every rep into a commit to a stronger you.</p>
+      <h1>Train hard.<br><span class="serif grad">level up.</span></h1>
+      <p>Записывайся на тренировки между парами, качай уровень, открывай сундуки и поднимайся в рейтинге KBTU.</p>
+    </div>
+
+    <div class="hero-game">
+      <div class="hg-card">
+        <span class="lvl-n">7</span>
+        <div><b>Чемпион</b><span class="meter"><i style="width: 68%"></i></span><small>612 / 850 XP</small></div>
+      </div>
+      <div class="hg-row">
+        <span class="hg-chip">🔥 5 нед.</span><span class="hg-chip">🎁 +25 XP</span><span class="hg-chip">🏆 #3</span><span class="hg-chip gold">👑 Premium</span>
+      </div>
     </div>
 
     <div class="hero-stats">
       <div><b>9</b><span>типов занятий</span></div>
-      <div><b>6</b><span>залов</span></div>
-      <div><b>7</b><span>тренеров</span></div>
+      <div><b>12</b><span>достижений</span></div>
+      <div><b>8</b><span>уровней</span></div>
     </div>
     <div class="idcard"><i>🎓</i><span><b>Student access</b><small>только для почты @kbtu.kz</small></span></div>
     <footer>Gym KBTU · FitnessIT · Almaty — stronger body, sharper mind</footer>
-    <i class="orn"></i><i class="mount"></i><i class="blob b1"></i><i class="blob b2"></i><i class="ring ring-1"></i><i class="ring ring-2"></i>
-  </section>
+      </section>
 
   <section class="panel">
+    {{ theme_toggle() }}
     <div class="card">
       {% block card %}{% endblock %}
     </div>

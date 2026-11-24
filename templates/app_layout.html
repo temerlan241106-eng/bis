@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros.html" import avatar, theme_toggle %}
 {% block body %}
 <header class="topbar">
   <a class="brand" href="{{ url_for('home') }}">
@@ -6,22 +7,57 @@
     <b>FitnessIT</b><em class="kbtu-tag">KBTU</em>
   </a>
   <nav>
-    <a href="{{ url_for('home') }}">Расписание</a>
-    {% if g.user['role'] == 'client' %}<a href="{{ url_for('schedule.my') }}">Мои записи</a>{% endif %}
-    {% if g.user['role'] == 'trainer' %}<a href="{{ url_for('staff.trainer') }}">Мои занятия</a>{% endif %}
-    <a href="{{ url_for('profile.leaderboard_page') }}">Рейтинг</a>
-    <a href="{{ url_for('profile.profile') }}">Профиль</a>
-    {% if g.user['role'] == 'admin' %}<a href="{{ url_for('staff.admin') }}">Админ</a>{% endif %}
+    {% set ep = request.endpoint %}
+    <a href="{{ url_for('home') }}" class="{{ 'on' if ep == 'home' }}"><i>📅</i><span>Расписание</span></a>
+    {% if g.user['role'] == 'client' %}<a href="{{ url_for('schedule.my') }}" class="{{ 'on' if ep == 'schedule.my' }}"><i>🎟️</i><span>Мои записи</span></a>{% endif %}
+    {% if g.user['role'] == 'trainer' %}<a href="{{ url_for('staff.trainer') }}" class="{{ 'on' if ep == 'staff.trainer' }}"><i>🧑‍🏫</i><span>Мои занятия</span></a>{% endif %}
+    <a href="{{ url_for('profile.leaderboard_page') }}" class="{{ 'on' if ep == 'profile.leaderboard_page' }}"><i>🏆</i><span>Рейтинг</span></a>
+    {% if g.user['role'] == 'client' %}<a href="{{ url_for('premium.pricing') }}" class="nav-premium {{ 'on' if ep and ep.startswith('premium') }}"><i>👑</i><span>Premium</span></a>{% endif %}
+    {% if g.user['role'] == 'admin' %}<a href="{{ url_for('staff.admin') }}" class="{{ 'on' if ep == 'staff.admin' }}"><i>🛠️</i><span>Админ</span></a>{% endif %}
   </nav>
+  <span class="spacer"></span>
+
+  {% if hud %}
+  <div class="hud">
+    <button type="button" class="hud-chip chest-btn {{ 'ready' if hud.chests_left else 'empty' }}" data-chest
+            title="{{ 'Открыть сундук: осталось ' ~ hud.chests_left if hud.chests_left else 'Сундук откроется завтра' }}">
+      🎁{% if hud.chests_left %}<em>{{ hud.chests_left }}</em>{% endif %}
+    </button>
+    <span class="hud-chip streak {{ 'hot' if hud.streak }}" title="Недель подряд с тренировками">🔥<b>{{ hud.streak }}</b></span>
+    <a class="hud-chip lvl" href="{{ url_for('profile.profile') }}" title="{{ hud.level.name }} · {{ hud.xp }} XP">
+      <span class="lvl-n">{{ hud.level.n }}</span>
+      <span class="lvl-info"><b data-xp>{{ hud.xp }} XP</b><span class="meter mini"><i data-xp-bar style="width: {{ hud.level.pct }}%"></i></span></span>
+    </a>
+  </div>
+  {% endif %}
+
+  {{ theme_toggle() }}
   <form class="logout" method="post" action="{{ url_for('auth.logout') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <a class="me" href="{{ url_for('profile.profile') }}"><i class="avatar">{{ g.user['name'][:1]|upper }}</i><span>{{ g.user['name'] }}</span></a>
-    <button type="submit" class="ghost">Выйти</button>
+    <a class="me" href="{{ url_for('profile.profile') }}">
+      {{ avatar(g.user['name'], hud.frame if hud else 'none', '', hud and hud.premium) }}
+      <span>{{ g.user['name'] }}{% if hud and hud.title %}<small>{{ hud.title }}</small>{% endif %}</span>
+    </a>
+    <button type="submit" class="theme-toggle" title="Выйти" aria-label="Выйти"><svg class="ic" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg></button>
   </form>
 </header>
+
+
 <main class="page">
   {% include "_flash.html" %}
   {% block content %}{% endblock %}
 </main>
 <footer class="site-foot"><span>FitnessIT · Student Gym</span><b>KBTU</b><span>Almaty, Kazakhstan</span></footer>
+
+{% if hud %}
+<div class="modal" id="chest-modal">
+  <div class="modal-card chest-card">
+    <div class="chest-art" data-chest-art><span class="chest-lid">🎁</span></div>
+    <span class="kicker" data-chest-kicker>Ежедневный сундук</span>
+    <h2 data-chest-title>Открываем…</h2>
+    <p class="sub" data-chest-text>Внутри случайный XP. Шанс на легендарный дроп — 5%.</p>
+    <button type="button" data-close>Забрать</button>
+  </div>
+</div>
+{% endif %}
 {% endblock %}

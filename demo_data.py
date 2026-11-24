@@ -109,6 +109,8 @@ def reset(conn):
         "SELECT id FROM users WHERE email IN (%s)" % ",".join("?" * len(STUDENTS)), [s[1] for s in STUDENTS])]
     for uid in ids:
         conn.execute("DELETE FROM bookings WHERE user_id = ?", (uid,))
+        conn.execute("DELETE FROM subscriptions WHERE user_id = ?", (uid,))
+        conn.execute("DELETE FROM bonus_xp WHERE user_id = ?", (uid,))
         conn.execute("DELETE FROM users WHERE id = ?", (uid,))
     cid = conn.execute("SELECT id FROM users WHERE email = ?", (CLIENT[0],)).fetchone()
     if cid:
@@ -128,11 +130,18 @@ def add_demo(conn, seed_value=2026):
     # создаём «раньше» в аккаунтах, чтобы «с нами с …» выглядело правдоподобно
     for name, email, classes, hours, per_week, weeks_back, skip in STUDENTS:
         since = _fmt(datetime.now() - timedelta(days=7 * weeks_back + 3))
-        conn.execute("INSERT INTO users (name, email, password_hash, role, created_at) VALUES (?,?,?,'client',?)",
+        conn.execute("INSERT INTO users (name, email, password_hash, role, created_at, email_verified) "
+                     "VALUES (?,?,?,'client',?,1)",
                      (name, email, pwd, since))
         uid = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()["id"]
         _history(conn, rnd, types, uid, classes, hours, per_week, weeks_back, skip)
         _upcoming(conn, rnd, uid, classes, rnd.randint(1, 3))
+    # первой демо-студентке — Premium на 3 месяца (начался 3 недели назад), для показа
+    aid = conn.execute("SELECT id FROM users WHERE email = ?", (STUDENTS[0][1],)).fetchone()["id"]
+    start = datetime.now() - timedelta(weeks=3)
+    conn.execute("INSERT INTO subscriptions (user_id, plan, price, starts_at, ends_at, card_last4) "
+                 "VALUES (?, 'quarter', 7990, ?, ?, '4242')",
+                 (aid, _fmt(start), _fmt(start + timedelta(days=90))))
     email, classes, hours, per_week, weeks_back, skip = CLIENT
     cid = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
     if cid and not conn.execute("SELECT 1 FROM bookings WHERE user_id = ?", (cid["id"],)).fetchone():

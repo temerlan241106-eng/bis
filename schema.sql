@@ -1,11 +1,14 @@
 CREATE TABLE users (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    name          TEXT    NOT NULL,
-    email         TEXT    NOT NULL UNIQUE,
-    password_hash TEXT    NOT NULL,
-    role          TEXT    NOT NULL DEFAULT 'client'
-                  CHECK (role IN ('client', 'trainer', 'admin')),
-    created_at    TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    name           TEXT    NOT NULL,
+    email          TEXT    NOT NULL UNIQUE,
+    password_hash  TEXT    NOT NULL,
+    role           TEXT    NOT NULL DEFAULT 'client'
+                   CHECK (role IN ('client', 'trainer', 'admin')),
+    created_at     TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    email_verified INTEGER NOT NULL DEFAULT 0,
+    title          TEXT,
+    frame          TEXT
 );
 
 CREATE TABLE sqlite_sequence(name,seq);
@@ -51,4 +54,26 @@ CREATE TABLE bookings (
 
 CREATE INDEX idx_bookings_slot ON bookings(slot_id, status);
 
-CREATE INDEX idx_slots_hall ON slots(hall_id, starts_at);
+CREATE TABLE subscriptions (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    INTEGER NOT NULL REFERENCES users(id),
+    plan       TEXT    NOT NULL,
+    price      INTEGER NOT NULL CHECK (price >= 0),
+    starts_at  TEXT    NOT NULL,
+    ends_at    TEXT    NOT NULL,
+    card_last4 TEXT,
+    created_at TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CHECK (ends_at > starts_at)
+);
+
+CREATE INDEX idx_subs_user ON subscriptions(user_id, ends_at);
+
+CREATE TABLE bonus_xp (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    INTEGER NOT NULL REFERENCES users(id),
+    day        TEXT    NOT NULL,
+    kind       TEXT    NOT NULL,
+    amount     INTEGER NOT NULL CHECK (amount > 0),
+    created_at TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (user_id, day, kind)
+);

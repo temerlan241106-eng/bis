@@ -17,6 +17,7 @@ def app(tmp_path):
         "TESTING": True,
         "WTF_CSRF_ENABLED": False,
         "RATELIMIT_ENABLED": False,
+        "TURSO_DATABASE_URL": "",  # тесты всегда на локальном SQLite
     })
     with app.app_context():
         seed.seed_if_empty(get_db())

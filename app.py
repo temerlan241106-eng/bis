@@ -8,6 +8,8 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 import auth
 import db
+import game
+import premium
 import userpage
 import schedule
 import staff
@@ -36,6 +38,16 @@ def create_app(test_config=None):
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=os.environ.get("COOKIE_SECURE") == "1",  # включить за HTTPS
         MAX_CONTENT_LENGTH=64 * 1024,
+        # облачная база Turso; пусто — локальный файл SQLite
+        TURSO_DATABASE_URL=os.environ.get("TURSO_DATABASE_URL", ""),
+        TURSO_AUTH_TOKEN=os.environ.get("TURSO_AUTH_TOKEN", ""),
+        # почта (Gmail: smtp.gmail.com, 587, логин — адрес Gmail, пароль — «пароль приложения»)
+        MAIL_SERVER=os.environ.get("MAIL_SERVER", "smtp.gmail.com"),
+        MAIL_PORT=int(os.environ.get("MAIL_PORT", 587)),
+        MAIL_USERNAME=os.environ.get("MAIL_USERNAME", ""),
+        MAIL_PASSWORD=os.environ.get("MAIL_PASSWORD", "").replace(" ", ""),
+        MAIL_SENDER_NAME=os.environ.get("MAIL_SENDER_NAME", "FitnessIT KBTU"),
+        PREFERRED_URL_SCHEME=os.environ.get("URL_SCHEME", "http"),
     )
 
     if test_config:
@@ -48,6 +60,8 @@ def create_app(test_config=None):
     app.register_blueprint(schedule.bp)
     app.register_blueprint(staff.bp)
     app.register_blueprint(userpage.bp)
+    app.register_blueprint(premium.bp)
+    game.init_app(app)
 
     ICONS = {"Йога": "🧘", "Кроссфит": "🔥", "Силовая тренировка": "🏋️", "Кардио": "🏃",
              "Пилатес": "🤸", "Стретчинг": "🌿", "Бокс": "🥊", "Зумба": "💃", "HIIT": "⚡"}
@@ -56,6 +70,7 @@ def create_app(test_config=None):
 
     app.jinja_env.filters["cicon"] = lambda n: ICONS.get(n, "💪")
     app.jinja_env.filters["chue"] = lambda n: HUES.get(n, 20)
+    app.jinja_env.filters["tenge"] = lambda n: f"{n:,}".replace(",", " ") + " ₸"
 
     @app.route("/")
     @auth.login_required

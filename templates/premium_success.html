@@ -1,0 +1,20 @@
+{% extends "app_layout.html" %}
+{% block title %}Premium активирован · FitnessIT{% endblock %}
+{% block content %}
+<section class="success-page" data-confetti="1">
+  <div class="success-badge">👑</div>
+  <span class="kicker">Оплата прошла</span>
+  <h2>Добро пожаловать в <span class="serif grad-gold">Premium</span></h2>
+  <p class="sub">Тариф «{{ plan.name }}» действует до <b>{{ until }}</b>. Начислено <b class="xp-c">+{{ bonus }} XP</b>.</p>
+  <div class="receipt">
+    <div><span>Тариф</span><b>Premium · {{ plan.name }}</b></div>
+    <div><span>Сумма</span><b>{{ sub['price']|tenge }}</b></div>
+    <div><span>Способ</span><b>{{ 'Kaspi QR' if sub['card_last4'] == 'KASP' else 'Карта •••• ' ~ sub['card_last4'] }}</b></div>
+    <div><span>Номер заказа</span><b>FIT-{{ '%05d'|format(sub['id']) }}</b></div>
+  </div>
+  <div class="success-actions">
+    <a class="btn" href="{{ url_for('home') }}">Записаться без лимитов</a>
+    <a class="btn ghost-btn" href="{{ url_for('profile.profile') }}#style">Надеть золотую рамку</a>
+  </div>
+</section>
+{% endblock %}

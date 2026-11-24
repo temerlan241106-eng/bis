@@ -1,7 +1,7 @@
 {% extends "app_layout.html" %}
 {% block title %}{{ title }} · FitnessIT{% endblock %}
 {% block content %}
-<h2>{{ title }}</h2>
+<div class="page-head"><div><span class="kicker">{{ "Панель администратора" if admin else "Панель тренера" }}</span><h2>{{ title }}</h2></div></div>
 {% if admin %}
 <form class="filters" method="post" action="{{ url_for('staff.create_slot') }}">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

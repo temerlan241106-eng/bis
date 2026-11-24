@@ -1,8 +1,27 @@
 {% extends "app_layout.html" %}
+{% from "_macros.html" import avatar %}
 {% block title %}Рейтинг · FitnessIT{% endblock %}
 {% block content %}
-<h2>Рейтинг студентов KBTU</h2>
-<p class="sub">Очки (XP) даются за посещённые занятия, новые дисциплины, достижения и недельные квесты. Отмена записи очки не снимает: считается только то, что ты отходил.</p>
+<div class="page-head">
+  <div><span class="kicker">Сезон KBTU</span><h2>Рейтинг <span class="serif">атлетов</span></h2></div>
+</div>
+<p class="sub">XP дают за посещённые занятия, новые дисциплины, достижения, недельные квесты и ежедневные сундуки. Лиги: 🥉 Бронза → 🥈 Серебро (150 XP) → 🥇 Золото (400) → 💎 Алмаз (700).</p>
+
+{% set podium = board.xp.top[:3] %}
+{% if podium|length == 3 %}
+<div class="podium">
+  {% for e in [podium[1], podium[0], podium[2]] %}
+  <div class="pod pod-{{ e.rank if not e.tie else loop.index }} {{ 'me' if e.id == me }}">
+    {{ avatar(e.name, e.frame, 'xl', e.premium) }}
+    <b>{{ e.name }}</b>
+    <small>{{ e.title or e.level.name }}</small>
+    <span class="pod-xp">{{ e.xp }} XP</span>
+    <div class="pod-block"><span>{{ {1: '🥇', 2: '🥈', 3: '🥉'}.get(e.rank, e.rank) }}</span></div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
 <div class="lb-cols">
   {% for key, title, unit in [('xp', 'Топ по XP', 'XP'), ('week', 'Неделя: занятий', 'зан.')] %}
   <section class="box lb">
@@ -12,8 +31,8 @@
       {% for e in board[key].top %}
       <li class="{{ 'me' if e.id == me }} {{ 'p' ~ e.rank if e.rank <= 3 and not e.tie }}">
         <span class="pos">{{ e.rank if e.tie else {1: '🥇', 2: '🥈', 3: '🥉'}.get(e.rank, e.rank) }}</span>
-        <i class="avatar">{{ e.name[:1]|upper }}</i>
-        <span class="nm"><b>{{ e.name }}</b><small>Ур. {{ e.level.n }} · {{ e.level.name }}</small></span>
+        {{ avatar(e.name, e.frame, '', e.premium) }}
+        <span class="nm"><b>{{ e.name }}</b><small><span class="lg lg-{{ e.league.code }}">{{ e.league.icon }} {{ e.league.name }}</span> · Ур. {{ e.level.n }}{% if e.title %} · {{ e.title }}{% endif %}</small></span>
         <span class="sc">{{ e[key] }} <small>{{ unit }}</small></span>
       </li>
       {% endfor %}
